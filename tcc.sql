@@ -34,6 +34,42 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: avaliacao; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.avaliacao (
+    empresa_id_avaliacao integer NOT NULL,
+    estrela1 integer,
+    estrelas2 integer,
+    estrelas3 integer,
+    estrelas4 integer,
+    estrelas5 integer,
+    nota numeric(3,2)
+);
+
+
+ALTER TABLE public.avaliacao OWNER TO postgres;
+
+--
+-- Name: avaliacao_final; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.avaliacao_final AS
+ SELECT avaliacao.empresa_id_avaliacao,
+    avaliacao.estrela1 AS nota1,
+    (avaliacao.estrelas2 * 2) AS nota2,
+    (avaliacao.estrelas3 * 3) AS nota3,
+    (avaliacao.estrelas4 * 4) AS nota4,
+    (avaliacao.estrelas5 * 5) AS nota5,
+    avaliacao.nota,
+    ((((avaliacao.estrela1 + (avaliacao.estrelas2 * 2)) + (avaliacao.estrelas3 * 3)) + (avaliacao.estrelas4 * 4)) + (avaliacao.estrelas5 * 5)) AS totalnota,
+    ((((avaliacao.estrela1 + avaliacao.estrelas2) + avaliacao.estrelas3) + avaliacao.estrelas4) + avaliacao.estrelas5) AS qtdepessoa
+   FROM public.avaliacao;
+
+
+ALTER TABLE public.avaliacao_final OWNER TO postgres;
+
+--
 -- Name: cartao_pagamento; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -60,28 +96,6 @@ CREATE TABLE public.categoria (
 
 
 ALTER TABLE public.categoria OWNER TO postgres;
-
---
--- Name: categoria_idcategoria_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.categoria_idcategoria_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.categoria_idcategoria_seq OWNER TO postgres;
-
---
--- Name: categoria_idcategoria_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.categoria_idcategoria_seq OWNED BY public.categoria.idcategoria;
-
 
 --
 -- Name: categoria_produto; Type: TABLE; Schema: public; Owner: postgres
@@ -113,11 +127,75 @@ CREATE TABLE public.empresa (
     numero character varying(10) NOT NULL,
     cep character varying(9) NOT NULL,
     complemento character varying(100),
-    plano_escolhido public.plano NOT NULL
+    plano_escolhido public.plano NOT NULL,
+    foto_perfil text
 );
 
 
 ALTER TABLE public.empresa OWNER TO postgres;
+
+--
+-- Name: produto; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.produto (
+    idproduto integer NOT NULL,
+    nome character varying(45) NOT NULL,
+    validade date,
+    valor numeric(10,2) NOT NULL,
+    status character varying(45) NOT NULL,
+    empresa_id_produto integer NOT NULL,
+    marca character varying(45),
+    peso numeric(3,2) NOT NULL,
+    descricao character varying(250) NOT NULL,
+    unidade_medida character varying(2) NOT NULL,
+    foto_principal text
+);
+
+
+ALTER TABLE public.produto OWNER TO postgres;
+
+--
+-- Name: cat_prod_empresa; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.cat_prod_empresa AS
+ SELECT c.nome_categoria,
+    cp.raca,
+    cp.especie,
+    p.nome AS nome_prod,
+    e.idempresa,
+    e.nome AS nome_empresa,
+    e.foto_perfil
+   FROM (((public.categoria_produto cp
+     JOIN public.categoria c ON ((cp.categoria_id_cat_prod = c.idcategoria)))
+     JOIN public.produto p ON ((p.idproduto = cp.produto_id_cat_prod)))
+     JOIN public.empresa e ON ((e.idempresa = p.empresa_id_produto)));
+
+
+ALTER TABLE public.cat_prod_empresa OWNER TO postgres;
+
+--
+-- Name: categoria_idcategoria_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.categoria_idcategoria_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.categoria_idcategoria_seq OWNER TO postgres;
+
+--
+-- Name: categoria_idcategoria_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.categoria_idcategoria_seq OWNED BY public.categoria.idcategoria;
+
 
 --
 -- Name: empresa_idempresa_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -371,26 +449,6 @@ ALTER SEQUENCE public.pet_idpet_seq OWNED BY public.pet.idpet;
 
 
 --
--- Name: produto; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.produto (
-    idproduto integer NOT NULL,
-    nome character varying(45) NOT NULL,
-    validade date,
-    valor numeric(10,2) NOT NULL,
-    status character varying(45) NOT NULL,
-    empresa_id_produto integer NOT NULL,
-    marca character varying(45),
-    peso numeric(3,2) NOT NULL,
-    descricao character varying(250) NOT NULL,
-    unidade_medida character varying(2) NOT NULL
-);
-
-
-ALTER TABLE public.produto OWNER TO postgres;
-
---
 -- Name: produtos_idproduto_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -537,6 +595,19 @@ ALTER TABLE ONLY public.usuario ALTER COLUMN idusuario SET DEFAULT nextval('publ
 
 
 --
+-- Data for Name: avaliacao; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.avaliacao (empresa_id_avaliacao, estrela1, estrelas2, estrelas3, estrelas4, estrelas5, nota) FROM stdin;
+1	2	4	10	20	10	\N
+2	10	5	8	21	15	\N
+3	1	3	30	28	40	\N
+4	200	50	77	19	12	\N
+5	4	55	6	40	17	\N
+\.
+
+
+--
 -- Data for Name: cartao_pagamento; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -579,12 +650,12 @@ cachorro	Todos	1	5
 -- Data for Name: empresa; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido) FROM stdin;
-1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico
-2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário
-3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado
-4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico
-5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico
+COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil) FROM stdin;
+1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	\N
+2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	\N
+3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	\N
+4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	\N
+5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	\N
 \.
 
 
@@ -670,12 +741,12 @@ COPY public.pet (idpet, nome, raca, especie, porte, nascimento, usuario_id_pet) 
 -- Data for Name: produto; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida) FROM stdin;
-1	sabor carne	2021-12-21	20.00	disponível	1	Golden	2.00	ração de carne Golden para gatos	kg
-3	sabor salmão	2026-10-19	22.00	disponível	3	Whiskas	1.00	ração de salmão Whiskas para gatos	kg
-4	sabor fígado	2023-07-25	15.00	indisponível	2	Guaby	1.00	ração de fígado Guaby para cachorros	kg
-2	sabor frango	2022-05-16	30.00	disponível	5	Premier	5.00	ração de frango Premier para cachorros	kg
-5	sabor peito de peru	2021-12-15	18.00	indisponível	4	Fórmula Natural	2.00	ração de peito de peru Fórmula Natural para cachorros	kg
+COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida, foto_principal) FROM stdin;
+1	sabor carne	2021-12-21	20.00	disponível	1	Golden	2.00	ração de carne Golden para gatos	kg	\N
+3	sabor salmão	2026-10-19	22.00	disponível	3	Whiskas	1.00	ração de salmão Whiskas para gatos	kg	\N
+4	sabor fígado	2023-07-25	15.00	indisponível	2	Guaby	1.00	ração de fígado Guaby para cachorros	kg	\N
+2	sabor frango	2022-05-16	30.00	disponível	5	Premier	5.00	ração de frango Premier para cachorros	kg	\N
+5	sabor peito de peru	2021-12-15	18.00	indisponível	4	Fórmula Natural	2.00	ração de peito de peru Fórmula Natural para cachorros	kg	\N
 \.
 
 
@@ -869,6 +940,14 @@ ALTER TABLE ONLY public.forma_pagamento
 
 ALTER TABLE ONLY public.categoria_produto
     ADD CONSTRAINT categoria_id_cat_prod FOREIGN KEY (categoria_id_cat_prod) REFERENCES public.categoria(idcategoria);
+
+
+--
+-- Name: avaliacao empresa_id_avaliacao; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.avaliacao
+    ADD CONSTRAINT empresa_id_avaliacao FOREIGN KEY (empresa_id_avaliacao) REFERENCES public.empresa(idempresa);
 
 
 --
