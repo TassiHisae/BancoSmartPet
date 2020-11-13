@@ -128,7 +128,8 @@ CREATE TABLE public.empresa (
     cep character varying(9) NOT NULL,
     complemento character varying(100),
     plano_escolhido public.plano NOT NULL,
-    foto_perfil text
+    foto_perfil text,
+    frete character varying(7)
 );
 
 
@@ -376,12 +377,13 @@ ALTER SEQUENCE public.pagamento_idpagamento_seq OWNED BY public.cartao_pagamento
 CREATE TABLE public.pedido (
     idpedido integer NOT NULL,
     total numeric(10,2) NOT NULL,
-    data_pedido date NOT NULL,
-    previsao date NOT NULL,
+    data_pedido timestamp without time zone NOT NULL,
+    previsao timestamp without time zone NOT NULL,
     empresa_id_pedido integer NOT NULL,
     usuario_id_pedido integer NOT NULL,
     forma_pagamento_id_pedido integer NOT NULL,
-    entregador_empresa_id_pedido integer NOT NULL
+    entregador_empresa_id_pedido integer NOT NULL,
+    endereco_usuario_id_pedido integer NOT NULL
 );
 
 
@@ -410,75 +412,15 @@ ALTER SEQUENCE public.pedido_idpedido_seq OWNED BY public.pedido.idpedido;
 
 
 --
--- Name: pet; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.pet (
-    idpet integer NOT NULL,
-    nome character varying(45) NOT NULL,
-    raca character varying(45) NOT NULL,
-    especie character varying(45) NOT NULL,
-    porte character varying(45) NOT NULL,
-    nascimento date NOT NULL,
-    usuario_id_pet integer NOT NULL
-);
-
-
-ALTER TABLE public.pet OWNER TO postgres;
-
---
--- Name: pet_idpet_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.pet_idpet_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.pet_idpet_seq OWNER TO postgres;
-
---
--- Name: pet_idpet_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.pet_idpet_seq OWNED BY public.pet.idpet;
-
-
---
--- Name: produtos_idproduto_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.produtos_idproduto_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.produtos_idproduto_seq OWNER TO postgres;
-
---
--- Name: produtos_idproduto_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.produtos_idproduto_seq OWNED BY public.produto.idproduto;
-
-
---
 -- Name: status_pedido; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.status_pedido (
-    status character varying(200) NOT NULL,
+    status_detalhe character varying(200) NOT NULL,
     descricao character varying(250),
-    data_status date NOT NULL,
-    pedido_id_status integer NOT NULL
+    data_status timestamp without time zone NOT NULL,
+    pedido_id_status integer NOT NULL,
+    status character(1)
 );
 
 
@@ -501,6 +443,59 @@ CREATE TABLE public.usuario (
 
 
 ALTER TABLE public.usuario OWNER TO postgres;
+
+--
+-- Name: pedido_resumo; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.pedido_resumo AS
+ SELECT p.idpedido,
+    p.total,
+    p.data_pedido,
+    e.idempresa,
+    e.nome AS nome_empresa,
+    e.foto_perfil,
+    u.idusuario,
+    u.nome AS nome_usuario,
+    enu.idendereco,
+    enu.endereco,
+    enu.numero,
+    enu.cep,
+    enu.complemento,
+        CASE
+            WHEN (s.status = '0'::bpchar) THEN 'desativado'::text
+            ELSE 'ativo'::text
+        END AS status
+   FROM ((((public.pedido p
+     JOIN public.status_pedido s ON ((s.pedido_id_status = p.idpedido)))
+     JOIN public.empresa e ON ((e.idempresa = p.empresa_id_pedido)))
+     JOIN public.usuario u ON ((u.idusuario = p.usuario_id_pedido)))
+     JOIN public.endereco_usuario enu ON ((enu.usuario_id_endereco = u.idusuario)));
+
+
+ALTER TABLE public.pedido_resumo OWNER TO postgres;
+
+--
+-- Name: produtos_idproduto_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.produtos_idproduto_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.produtos_idproduto_seq OWNER TO postgres;
+
+--
+-- Name: produtos_idproduto_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.produtos_idproduto_seq OWNED BY public.produto.idproduto;
+
 
 --
 -- Name: usuario_idusuario_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -574,13 +569,6 @@ ALTER TABLE ONLY public.pedido ALTER COLUMN idpedido SET DEFAULT nextval('public
 
 
 --
--- Name: pet idpet; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.pet ALTER COLUMN idpet SET DEFAULT nextval('public.pet_idpet_seq'::regclass);
-
-
---
 -- Name: produto idproduto; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -650,12 +638,12 @@ cachorro	Todos	1	5
 -- Data for Name: empresa; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil) FROM stdin;
-1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	\N
-2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	\N
-3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	\N
-4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	\N
-5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	\N
+COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil, frete) FROM stdin;
+1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	\N	grátis
+2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	\N	grátis
+3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	\N	grátis
+4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	\N	grátis
+5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	\N	5,00
 \.
 
 
@@ -708,6 +696,7 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 22.00	3	4	3
 15.00	1	5	4
 18.00	2	6	5
+20.00	2	7	1
 \.
 
 
@@ -715,25 +704,13 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 -- Data for Name: pedido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, forma_pagamento_id_pedido, entregador_empresa_id_pedido) FROM stdin;
-2	40.00	2020-09-25	2020-09-25	1	6	1	1
-3	90.00	2020-10-26	2020-10-26	5	3	2	5
-4	66.00	2020-10-09	2020-10-10	3	4	3	3
-5	15.00	2020-09-25	2020-09-26	2	7	4	2
-6	18.00	2020-10-01	2020-10-01	4	5	5	4
-\.
-
-
---
--- Data for Name: pet; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.pet (idpet, nome, raca, especie, porte, nascimento, usuario_id_pet) FROM stdin;
-3	Robin	Husky Siberiano	cachorro	médio	2020-07-21	3
-4	Tom	Ragdoll	gato	médio	2013-03-04	4
-5	Mel	Golden Retriever	cachorro	grande	2010-09-12	5
-6	Sr. Gato	Sphynx	gato	médio	2019-08-17	6
-7	Frederico	Pug	cachorro	pequeno	2015-10-28	7
+COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, forma_pagamento_id_pedido, entregador_empresa_id_pedido, endereco_usuario_id_pedido) FROM stdin;
+2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	1	1	4
+4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	3	3	2
+5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	4	2	5
+6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	5	4	3
+7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	1	1	3
+3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	2	5	1
 \.
 
 
@@ -754,12 +731,13 @@ COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produt
 -- Data for Name: status_pedido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.status_pedido (status, descricao, data_status, pedido_id_status) FROM stdin;
-em separação	separando o produto pedido	2020-09-25	2
-em separação	separando o produto pedido	2020-10-26	3
-a caminho	a caminho do cliente	2020-10-09	4
-entregue	pedido foi entregue ao cliente	2020-09-25	5
-em separação	separando o produto pedido	2020-10-01	6
+COPY public.status_pedido (status_detalhe, descricao, data_status, pedido_id_status, status) FROM stdin;
+em separação	separando o produto pedido	2020-09-25 00:00:00	2	1
+em separação	separando o produto pedido	2020-10-26 00:00:00	3	1
+a caminho	a caminho do cliente	2020-10-09 00:00:00	4	1
+entregue	pedido foi entregue ao cliente	2020-09-25 00:00:00	5	0
+em separação	separando o produto pedido	2020-10-01 00:00:00	6	1
+em separação	separando o produto pedido	2020-11-13 00:00:00	7	1
 \.
 
 
@@ -822,14 +800,7 @@ SELECT pg_catalog.setval('public.pagamento_idpagamento_seq', 5, true);
 -- Name: pedido_idpedido_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.pedido_idpedido_seq', 6, true);
-
-
---
--- Name: pet_idpet_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.pet_idpet_seq', 7, true);
+SELECT pg_catalog.setval('public.pedido_idpedido_seq', 7, true);
 
 
 --
@@ -903,14 +874,6 @@ ALTER TABLE ONLY public.pedido
 
 
 --
--- Name: pet pet_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.pet
-    ADD CONSTRAINT pet_pkey PRIMARY KEY (idpet);
-
-
---
 -- Name: produto produtos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -972,6 +935,14 @@ ALTER TABLE ONLY public.pedido
 
 ALTER TABLE ONLY public.produto
     ADD CONSTRAINT empresa_id_produto FOREIGN KEY (empresa_id_produto) REFERENCES public.empresa(idempresa);
+
+
+--
+-- Name: pedido endereco_usuario_id_pedido; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.pedido
+    ADD CONSTRAINT endereco_usuario_id_pedido FOREIGN KEY (endereco_usuario_id_pedido) REFERENCES public.endereco_usuario(idendereco);
 
 
 --
@@ -1044,14 +1015,6 @@ ALTER TABLE ONLY public.endereco_usuario
 
 ALTER TABLE ONLY public.pedido
     ADD CONSTRAINT usuario_id_pedido FOREIGN KEY (usuario_id_pedido) REFERENCES public.usuario(idusuario);
-
-
---
--- Name: pet usuario_id_pet; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.pet
-    ADD CONSTRAINT usuario_id_pet FOREIGN KEY (usuario_id_pet) REFERENCES public.usuario(idusuario);
 
 
 --
