@@ -121,7 +121,7 @@ CREATE TABLE public.empresa (
     cnpj character varying(18) NOT NULL,
     email character varying(45) NOT NULL,
     senha character varying(15) NOT NULL,
-    telefone character varying(15) NOT NULL,
+    telefone character varying(15),
     celular character varying(16) NOT NULL,
     endereco character varying(200) NOT NULL,
     numero character varying(10) NOT NULL,
@@ -129,7 +129,10 @@ CREATE TABLE public.empresa (
     complemento character varying(100),
     plano_escolhido public.plano NOT NULL,
     foto_perfil text,
-    frete character varying(7)
+    frete character varying(7),
+    cidade character varying(150) NOT NULL,
+    bairro character varying(150) NOT NULL,
+    estado character varying(3) NOT NULL
 );
 
 
@@ -230,7 +233,10 @@ CREATE TABLE public.endereco_usuario (
     numero character varying(10) NOT NULL,
     cep character varying(10) NOT NULL,
     complemento character varying(100),
-    usuario_id_endereco integer NOT NULL
+    usuario_id_endereco integer NOT NULL,
+    cidade character varying(150) NOT NULL,
+    bairro character varying(150) NOT NULL,
+    estado character varying(3) NOT NULL
 );
 
 
@@ -638,12 +644,18 @@ cachorro	Todos	1	5
 -- Data for Name: empresa; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil, frete) FROM stdin;
-1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	\N	grátis
-2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	\N	grátis
-3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	\N	grátis
-4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	\N	grátis
-5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	\N	5,00
+COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil, frete, cidade, bairro, estado) FROM stdin;
+1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	foto_1	grátis	Atibaia	Alvinópolis	SP
+2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	foto_2	grátis	Piracicaba	Paulista	SP
+3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	foto_3	grátis	São Paulo	Jardim Monte Azul	SP
+4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	foto_4	grátis	Campo Limpo Paulista	Vila Constança	SP
+5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	foto_5	5,00	Sorocaba	Vila Gabriel	SP
+6	Petitos	95.833.009/0001-90	contato@petitos.com.br	petitos123	(11) 3923-2401	(11) 98979-3003	Praça Uirapuru	489	05675-030	Casa de Ração	Básico	foto_6	\N	São Paulo	Cidade Jardim	SP
+7	Bigodinho Pets	57.463.932/0001-98	adm@bigodinhopets.com	francalinopets	(11) 4568-1265	(11) 98456-5213	Av. João Batista Medina	79	06803-445	Casa de Ração do Francalino	Intermediário	foto_7	\N	Embu das Artes	Centro	SP
+8	PetLove	65.154.265/0001-25	contato@ptlove.com	petinhoslovitos	(11) 2564-4569	(11) 95684-2356	Rua Sylvio Zanelato	77	06767110		Intermediário	foto_8	\N	Taboão da Serra	Pq.Pinheiros	SP
+9	PetStore	54.985.654/0001-37	adm@petstore.com	petloja	(11) 3256-4587	(11) 96541-2364	Rua Saturno	56	06840-080		Avançado	foto_9	\N	Embu das Artes	Jd. Novo Embu	SP
+21	Pet Life	11.008.984/0001-73	contato@ptlife.com	vidapet	(11) 2632-8164	(11) 98853-9437	Rua Salvador Caruso	927	05054-060		Básico	foto_21	\N	São Paulo	Vila Ipojuca	SP
+23	Vida Pet	98.650.958/0001-22	adm@vidapet.com	petvida	(17) 3570-5543	(17) 99411-9215	Rodovia Armando de Salles Oliveira km 595,501	403	14707-900		Básico	foto_23	\N	Bebedouro	Jardim do Bosque	SP
 \.
 
 
@@ -651,12 +663,12 @@ COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, end
 -- Data for Name: endereco_usuario; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, usuario_id_endereco) FROM stdin;
-1	Rua Monte Denali	367	69092-425	Rua sem saída	3
-2	Rua José Estevam Souza	817	56310-240	Casa 5	4
-3	Quadra SQ 19 Quadra 12	168	72880-714	Loja de roupa	5
-4	Rua Pequi	315	79115-160	Casa 3	6
-5	Travessa B	435	49096-277	Rua sem saída	7
+COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, usuario_id_endereco, cidade, bairro, estado) FROM stdin;
+1	Rua Monte Denali	367	69092-425	Rua sem saída	3	Manaus	Nova Cidade	AM
+2	Rua José Estevam Souza	817	56310-240	Casa 5	4	Petrolina	COHAB Massangano	PE
+3	Quadra SQ 19 Quadra 12	168	72880-714	Loja de roupa	5	Cidade Ocidental	Centro	GO
+4	Rua Pequi	315	79115-160	Casa 3	6	Campo Grande	Coophatrabalho	MS
+5	Travessa B	435	49096-277	Rua sem saída	7	Aracaju	Jabotiana	SE
 \.
 
 
@@ -765,7 +777,7 @@ SELECT pg_catalog.setval('public.categoria_idcategoria_seq', 5, true);
 -- Name: empresa_idempresa_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.empresa_idempresa_seq', 5, true);
+SELECT pg_catalog.setval('public.empresa_idempresa_seq', 38, true);
 
 
 --
