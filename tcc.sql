@@ -132,7 +132,7 @@ CREATE TABLE public.empresa (
     frete character varying(7),
     cidade character varying(150) NOT NULL,
     bairro character varying(150) NOT NULL,
-    estado character varying(3) NOT NULL
+    estado character varying(2) NOT NULL
 );
 
 
@@ -273,7 +273,7 @@ CREATE TABLE public.entregador_empresa (
     cpf_entregador character varying(14) NOT NULL,
     nome character varying(200) NOT NULL,
     celular character varying(16) NOT NULL,
-    telefone character varying(16),
+    celular2 character varying(16),
     empresa_id_entregador integer NOT NULL
 );
 
@@ -355,6 +355,21 @@ CREATE TABLE public.item_pedido (
 ALTER TABLE public.item_pedido OWNER TO postgres;
 
 --
+-- Name: lista_pedido_produto; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.lista_pedido_produto AS
+ SELECT ip.pedido_id_item AS idpedido,
+    ip.qtd,
+    p.nome,
+    p.descricao
+   FROM (public.item_pedido ip
+     JOIN public.produto p ON ((p.idproduto = ip.produto_id_item)));
+
+
+ALTER TABLE public.lista_pedido_produto OWNER TO postgres;
+
+--
 -- Name: pagamento_idpagamento_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -384,12 +399,14 @@ CREATE TABLE public.pedido (
     idpedido integer NOT NULL,
     total numeric(10,2) NOT NULL,
     data_pedido timestamp without time zone NOT NULL,
-    previsao timestamp without time zone NOT NULL,
+    previsao timestamp without time zone,
     empresa_id_pedido integer NOT NULL,
     usuario_id_pedido integer NOT NULL,
     forma_pagamento_id_pedido integer NOT NULL,
-    entregador_empresa_id_pedido integer NOT NULL,
-    endereco_usuario_id_pedido integer NOT NULL
+    entregador_empresa_id_pedido integer,
+    endereco_usuario_id_pedido integer NOT NULL,
+    idusuario_pedidos character varying(255) NOT NULL,
+    status character(1) NOT NULL
 );
 
 
@@ -418,21 +435,6 @@ ALTER SEQUENCE public.pedido_idpedido_seq OWNED BY public.pedido.idpedido;
 
 
 --
--- Name: status_pedido; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.status_pedido (
-    status_detalhe character varying(200) NOT NULL,
-    descricao character varying(250),
-    data_status timestamp without time zone NOT NULL,
-    pedido_id_status integer NOT NULL,
-    status character(1)
-);
-
-
-ALTER TABLE public.status_pedido OWNER TO postgres;
-
---
 -- Name: usuario; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -443,7 +445,7 @@ CREATE TABLE public.usuario (
     email character varying(45) NOT NULL,
     nascimento date NOT NULL,
     nome character varying(100) NOT NULL,
-    telefone character varying(15),
+    celular2 character varying(16),
     celular character varying(16) NOT NULL
 );
 
@@ -457,26 +459,33 @@ ALTER TABLE public.usuario OWNER TO postgres;
 CREATE VIEW public.pedido_resumo AS
  SELECT p.idpedido,
     p.total,
-    p.data_pedido,
+    to_char(p.data_pedido, 'dd/mm/yyyy hh24:mi'::text) AS data_pedido,
+    to_char(p.previsao, 'dd/mm/yyyy'::text) AS data_previsao,
+    to_char(p.previsao, 'hh24:mi'::text) AS hora_previsao,
     e.idempresa,
     e.nome AS nome_empresa,
     e.foto_perfil,
     u.idusuario,
     u.nome AS nome_usuario,
+    u.celular,
+    u.celular2,
     enu.idendereco,
     enu.endereco,
     enu.numero,
     enu.cep,
+    enu.bairro,
+    enu.cidade,
+    enu.estado,
     enu.complemento,
         CASE
-            WHEN (s.status = '0'::bpchar) THEN 'desativado'::text
+            WHEN (p.status = '0'::bpchar) THEN 'inativo'::text
             ELSE 'ativo'::text
         END AS status
-   FROM ((((public.pedido p
-     JOIN public.status_pedido s ON ((s.pedido_id_status = p.idpedido)))
+   FROM (((public.pedido p
      JOIN public.empresa e ON ((e.idempresa = p.empresa_id_pedido)))
      JOIN public.usuario u ON ((u.idusuario = p.usuario_id_pedido)))
-     JOIN public.endereco_usuario enu ON ((enu.usuario_id_endereco = u.idusuario)));
+     JOIN public.endereco_usuario enu ON ((enu.usuario_id_endereco = u.idusuario)))
+  ORDER BY p.idpedido;
 
 
 ALTER TABLE public.pedido_resumo OWNER TO postgres;
@@ -502,6 +511,20 @@ ALTER TABLE public.produtos_idproduto_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.produtos_idproduto_seq OWNED BY public.produto.idproduto;
 
+
+--
+-- Name: status_pedido; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.status_pedido (
+    status_detalhe character varying(200) NOT NULL,
+    descricao character varying(250),
+    data_status timestamp without time zone NOT NULL,
+    pedido_id_status integer NOT NULL
+);
+
+
+ALTER TABLE public.status_pedido OWNER TO postgres;
 
 --
 -- Name: usuario_idusuario_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -619,11 +642,11 @@ COPY public.cartao_pagamento (idcartaopagamento, numero_cartao, cvv, validade, n
 --
 
 COPY public.categoria (idcategoria, nome_categoria) FROM stdin;
-1	ração
-2	petisco
-3	brinquedo
-4	roupa
-5	mala
+1	Alimentos
+2	Acessórios
+3	Saúde
+4	Utensílios
+5	Brinquedos
 \.
 
 
@@ -633,10 +656,10 @@ COPY public.categoria (idcategoria, nome_categoria) FROM stdin;
 
 COPY public.categoria_produto (especie, raca, categoria_id_cat_prod, produto_id_cat_prod) FROM stdin;
 gato	Ragdoll	1	1
-cachorro	Husky Siberiano	1	2
 gato	Todos	1	3
 cachorro	Golden Retriever	1	4
 cachorro	Todos	1	5
+cachorro	Pastor-Alemão	1	2
 \.
 
 
@@ -676,7 +699,7 @@ COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, us
 -- Data for Name: entregador_empresa; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.entregador_empresa (identregadorempresa, cpf_entregador, nome, celular, telefone, empresa_id_entregador) FROM stdin;
+COPY public.entregador_empresa (identregadorempresa, cpf_entregador, nome, celular, celular2, empresa_id_entregador) FROM stdin;
 1	471.045.284-90	Heloisa Marina Rayssa Castro	(95) 98730-6310	(95) 3639-9633	1
 2	942.006.114-06	Sebastiana Teresinha Caldeira	(51) 99906-5059	(51) 2713-8864	2
 3	617.772.722-03	Tiago Augusto Souza	(11) 98996-4176	(11) 3689-2561	3
@@ -708,7 +731,8 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 22.00	3	4	3
 15.00	1	5	4
 18.00	2	6	5
-20.00	2	7	1
+20.00	1	7	1
+20.00	1	7	1
 \.
 
 
@@ -716,13 +740,13 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 -- Data for Name: pedido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, forma_pagamento_id_pedido, entregador_empresa_id_pedido, endereco_usuario_id_pedido) FROM stdin;
-2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	1	1	4
-4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	3	3	2
-5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	4	2	5
-6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	5	4	3
-7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	1	1	3
-3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	2	5	1
+COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, forma_pagamento_id_pedido, entregador_empresa_id_pedido, endereco_usuario_id_pedido, idusuario_pedidos, status) FROM stdin;
+2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	1	1	4	6_1	1
+3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	2	5	1	3_1	1
+4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	3	3	2	4_1	1
+6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	5	4	3	5_1	1
+7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	1	1	3	3_2	1
+5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	4	2	5	7_1	0
 \.
 
 
@@ -731,11 +755,11 @@ COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, u
 --
 
 COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida, foto_principal) FROM stdin;
-1	sabor carne	2021-12-21	20.00	disponível	1	Golden	2.00	ração de carne Golden para gatos	kg	\N
-3	sabor salmão	2026-10-19	22.00	disponível	3	Whiskas	1.00	ração de salmão Whiskas para gatos	kg	\N
-4	sabor fígado	2023-07-25	15.00	indisponível	2	Guaby	1.00	ração de fígado Guaby para cachorros	kg	\N
-2	sabor frango	2022-05-16	30.00	disponível	5	Premier	5.00	ração de frango Premier para cachorros	kg	\N
-5	sabor peito de peru	2021-12-15	18.00	indisponível	4	Fórmula Natural	2.00	ração de peito de peru Fórmula Natural para cachorros	kg	\N
+1	sabor carne	2021-12-21	20.00	disponível	1	Golden	2.00	ração de carne Golden para gatos	kg	Produto_1
+2	sabor frango	2022-05-16	30.00	disponível	5	Premier	5.00	ração de frango Premier para cachorros	kg	Produto_2
+3	sabor salmão	2026-10-19	22.00	disponível	3	Whiskas	1.00	ração de salmão Whiskas para gatos	kg	Produto_3
+4	sabor fígado	2023-07-25	15.00	indisponível	2	Guaby	1.00	ração de fígado Guaby para cachorros	kg	Produto_4
+5	sabor peito de peru	2021-12-15	18.00	indisponível	4	Fórmula Natural	2.00	ração de peito de peru Fórmula Natural para cachorros	kg	Produto_5
 \.
 
 
@@ -743,13 +767,14 @@ COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produt
 -- Data for Name: status_pedido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.status_pedido (status_detalhe, descricao, data_status, pedido_id_status, status) FROM stdin;
-em separação	separando o produto pedido	2020-09-25 00:00:00	2	1
-em separação	separando o produto pedido	2020-10-26 00:00:00	3	1
-a caminho	a caminho do cliente	2020-10-09 00:00:00	4	1
-entregue	pedido foi entregue ao cliente	2020-09-25 00:00:00	5	0
-em separação	separando o produto pedido	2020-10-01 00:00:00	6	1
-em separação	separando o produto pedido	2020-11-13 00:00:00	7	1
+COPY public.status_pedido (status_detalhe, descricao, data_status, pedido_id_status) FROM stdin;
+a caminho	a caminho do cliente	2020-10-09 00:00:00	4
+Pedido Aceito	\N	2020-11-19 22:35:00	7
+Em Separação	separando o produto pedido	2020-09-25 00:00:00	2
+Em Separação	separando o produto pedido	2020-10-26 00:00:00	3
+Em Separação	separando o produto pedido	2020-10-01 00:00:00	6
+Em Separação	separando o produto pedido	2020-11-13 00:00:00	7
+Entregue	pedido foi entregue ao cliente	2020-09-25 00:00:00	5
 \.
 
 
@@ -757,7 +782,7 @@ em separação	separando o produto pedido	2020-11-13 00:00:00	7	1
 -- Data for Name: usuario; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.usuario (idusuario, cpf, senha, email, nascimento, nome, telefone, celular) FROM stdin;
+COPY public.usuario (idusuario, cpf, senha, email, nascimento, nome, celular2, celular) FROM stdin;
 3	089.703.487-27	d21Ym3tGse	sophiegiovannaclariceramos@gamil.com	1974-02-19	Sophie Giovanna Clarice Ramos	(92) 3585-1880	(92) 98531-9989
 4	837.147.127-04	0JbmS4YaLJ	carlaalinealmeida@live.jp	1987-05-01	Carla Aline Almeida	(87) 3892-2532	(87) 98716-9531
 5	166.226.857-20	cTGGlWsc7d	aaurorajuliamilenalima@numero.com.br	1999-09-05	Aurora Julia Milena Lima	(61) 2852-8566	(61) 99892-8514
