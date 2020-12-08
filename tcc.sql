@@ -17,6 +17,19 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: forma_pagamento; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.forma_pagamento AS ENUM (
+    'Dinheiro',
+    'Crédito',
+    'Débito'
+);
+
+
+ALTER TYPE public.forma_pagamento OWNER TO postgres;
+
+--
 -- Name: plano; Type: TYPE; Schema: public; Owner: postgres
 --
 
@@ -70,22 +83,6 @@ CREATE VIEW public.avaliacao_final AS
 ALTER TABLE public.avaliacao_final OWNER TO postgres;
 
 --
--- Name: cartao_pagamento; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.cartao_pagamento (
-    idcartaopagamento integer NOT NULL,
-    numero_cartao character varying(19),
-    cvv character varying(3),
-    validade character varying(5),
-    nome_cartao character varying(100) NOT NULL,
-    usuario_id_cartao_pag integer NOT NULL
-);
-
-
-ALTER TABLE public.cartao_pagamento OWNER TO postgres;
-
---
 -- Name: categoria; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -102,14 +99,58 @@ ALTER TABLE public.categoria OWNER TO postgres;
 --
 
 CREATE TABLE public.categoria_produto (
-    especie character varying(45) NOT NULL,
-    raca character varying(45) NOT NULL,
     categoria_id_cat_prod integer NOT NULL,
-    produto_id_cat_prod integer NOT NULL
+    produto_id_cat_prod integer NOT NULL,
+    raca_id_cat_prod integer
 );
 
 
 ALTER TABLE public.categoria_produto OWNER TO postgres;
+
+--
+-- Name: especie; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.especie (
+    idespecie integer NOT NULL,
+    nome_especie character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.especie OWNER TO postgres;
+
+--
+-- Name: raca; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.raca (
+    idraca integer NOT NULL,
+    nome_raca character varying(100) NOT NULL,
+    especie_id_raca integer NOT NULL
+);
+
+
+ALTER TABLE public.raca OWNER TO postgres;
+
+--
+-- Name: cat_prod_cad; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.cat_prod_cad AS
+ SELECT cp.categoria_id_cat_prod,
+    cp.raca_id_cat_prod,
+    cp.produto_id_cat_prod,
+    c.nome_categoria,
+    r.nome_raca,
+    r.especie_id_raca,
+    e.nome_especie
+   FROM (((public.categoria_produto cp
+     JOIN public.raca r ON ((r.idraca = cp.raca_id_cat_prod)))
+     JOIN public.especie e ON ((e.idespecie = r.especie_id_raca)))
+     JOIN public.categoria c ON ((c.idcategoria = cp.categoria_id_cat_prod)));
+
+
+ALTER TABLE public.cat_prod_cad OWNER TO postgres;
 
 --
 -- Name: empresa; Type: TABLE; Schema: public; Owner: postgres
@@ -146,12 +187,12 @@ CREATE TABLE public.produto (
     idproduto integer NOT NULL,
     nome character varying(45) NOT NULL,
     validade date,
-    valor numeric(10,2) NOT NULL,
+    valor integer NOT NULL,
     status character varying(45) NOT NULL,
     empresa_id_produto integer NOT NULL,
     marca character varying(45),
-    peso numeric(3,2) NOT NULL,
-    descricao character varying(250) NOT NULL,
+    peso integer NOT NULL,
+    descricao character varying(250),
     unidade_medida character varying(2) NOT NULL,
     foto_principal text
 );
@@ -165,16 +206,18 @@ ALTER TABLE public.produto OWNER TO postgres;
 
 CREATE VIEW public.cat_prod_empresa AS
  SELECT c.nome_categoria,
-    cp.raca,
-    cp.especie,
+    r.nome_raca AS raca,
+    es.nome_especie AS especie,
     p.nome AS nome_prod,
     e.idempresa,
     e.nome AS nome_empresa,
     e.foto_perfil
-   FROM (((public.categoria_produto cp
-     JOIN public.categoria c ON ((cp.categoria_id_cat_prod = c.idcategoria)))
+   FROM (((((public.categoria c
+     JOIN public.categoria_produto cp ON ((cp.categoria_id_cat_prod = c.idcategoria)))
      JOIN public.produto p ON ((p.idproduto = cp.produto_id_cat_prod)))
-     JOIN public.empresa e ON ((e.idempresa = p.empresa_id_produto)));
+     JOIN public.empresa e ON ((e.idempresa = p.empresa_id_produto)))
+     JOIN public.raca r ON ((r.idraca = cp.raca_id_cat_prod)))
+     JOIN public.especie es ON ((es.idespecie = r.especie_id_raca)));
 
 
 ALTER TABLE public.cat_prod_empresa OWNER TO postgres;
@@ -265,26 +308,10 @@ ALTER SEQUENCE public.endereco_usuario_idendereco_seq OWNED BY public.endereco_u
 
 
 --
--- Name: entregador_empresa; Type: TABLE; Schema: public; Owner: postgres
+-- Name: especie_idespecie_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.entregador_empresa (
-    identregadorempresa integer NOT NULL,
-    cpf_entregador character varying(14) NOT NULL,
-    nome character varying(200) NOT NULL,
-    celular character varying(16) NOT NULL,
-    celular2 character varying(16),
-    empresa_id_entregador integer NOT NULL
-);
-
-
-ALTER TABLE public.entregador_empresa OWNER TO postgres;
-
---
--- Name: entregador_empresa_identregadorempresa_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.entregador_empresa_identregadorempresa_seq
+CREATE SEQUENCE public.especie_idespecie_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -293,51 +320,13 @@ CREATE SEQUENCE public.entregador_empresa_identregadorempresa_seq
     CACHE 1;
 
 
-ALTER TABLE public.entregador_empresa_identregadorempresa_seq OWNER TO postgres;
+ALTER TABLE public.especie_idespecie_seq OWNER TO postgres;
 
 --
--- Name: entregador_empresa_identregadorempresa_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: especie_idespecie_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
-ALTER SEQUENCE public.entregador_empresa_identregadorempresa_seq OWNED BY public.entregador_empresa.identregadorempresa;
-
-
---
--- Name: forma_pagamento; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.forma_pagamento (
-    idformapagamento integer NOT NULL,
-    forma_pagamento character varying(17) NOT NULL,
-    parcelas integer,
-    valor_parcelas numeric(10,2),
-    cod_barra character varying(47),
-    cartao_pag_id_forma integer
-);
-
-
-ALTER TABLE public.forma_pagamento OWNER TO postgres;
-
---
--- Name: forma_pagamento_idformapagamento_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.forma_pagamento_idformapagamento_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.forma_pagamento_idformapagamento_seq OWNER TO postgres;
-
---
--- Name: forma_pagamento_idformapagamento_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.forma_pagamento_idformapagamento_seq OWNED BY public.forma_pagamento.idformapagamento;
+ALTER SEQUENCE public.especie_idespecie_seq OWNED BY public.especie.idespecie;
 
 
 --
@@ -345,7 +334,7 @@ ALTER SEQUENCE public.forma_pagamento_idformapagamento_seq OWNED BY public.forma
 --
 
 CREATE TABLE public.item_pedido (
-    valor_item numeric(10,2) NOT NULL,
+    valor_item integer NOT NULL,
     qtd integer NOT NULL,
     pedido_id_item integer NOT NULL,
     produto_id_item integer NOT NULL
@@ -370,28 +359,6 @@ CREATE VIEW public.lista_pedido_produto AS
 ALTER TABLE public.lista_pedido_produto OWNER TO postgres;
 
 --
--- Name: pagamento_idpagamento_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.pagamento_idpagamento_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.pagamento_idpagamento_seq OWNER TO postgres;
-
---
--- Name: pagamento_idpagamento_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.pagamento_idpagamento_seq OWNED BY public.cartao_pagamento.idcartaopagamento;
-
-
---
 -- Name: pedido; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -402,15 +369,32 @@ CREATE TABLE public.pedido (
     previsao timestamp without time zone,
     empresa_id_pedido integer NOT NULL,
     usuario_id_pedido integer NOT NULL,
-    forma_pagamento_id_pedido integer NOT NULL,
-    entregador_empresa_id_pedido integer,
     endereco_usuario_id_pedido integer NOT NULL,
     idusuario_pedidos character varying(255) NOT NULL,
-    status character(1) NOT NULL
+    status character(1) NOT NULL,
+    forma_pagamento public.forma_pagamento NOT NULL
 );
 
 
 ALTER TABLE public.pedido OWNER TO postgres;
+
+--
+-- Name: parcerias; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.parcerias AS
+ SELECT p.empresa_id_pedido,
+    count(p.empresa_id_pedido) AS pedidos,
+    e.nome,
+    e.foto_perfil
+   FROM (public.pedido p
+     JOIN public.empresa e ON ((e.idempresa = p.empresa_id_pedido)))
+  GROUP BY p.empresa_id_pedido, e.nome, e.foto_perfil
+  ORDER BY (count(p.empresa_id_pedido)) DESC
+ LIMIT 6;
+
+
+ALTER TABLE public.parcerias OWNER TO postgres;
 
 --
 -- Name: pedido_idpedido_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -513,6 +497,28 @@ ALTER SEQUENCE public.produtos_idproduto_seq OWNED BY public.produto.idproduto;
 
 
 --
+-- Name: raca_idraca_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.raca_idraca_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.raca_idraca_seq OWNER TO postgres;
+
+--
+-- Name: raca_idraca_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.raca_idraca_seq OWNED BY public.raca.idraca;
+
+
+--
 -- Name: status_pedido; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -549,13 +555,6 @@ ALTER SEQUENCE public.usuario_idusuario_seq OWNED BY public.usuario.idusuario;
 
 
 --
--- Name: cartao_pagamento idcartaopagamento; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.cartao_pagamento ALTER COLUMN idcartaopagamento SET DEFAULT nextval('public.pagamento_idpagamento_seq'::regclass);
-
-
---
 -- Name: categoria idcategoria; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -577,17 +576,10 @@ ALTER TABLE ONLY public.endereco_usuario ALTER COLUMN idendereco SET DEFAULT nex
 
 
 --
--- Name: entregador_empresa identregadorempresa; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: especie idespecie; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.entregador_empresa ALTER COLUMN identregadorempresa SET DEFAULT nextval('public.entregador_empresa_identregadorempresa_seq'::regclass);
-
-
---
--- Name: forma_pagamento idformapagamento; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.forma_pagamento ALTER COLUMN idformapagamento SET DEFAULT nextval('public.forma_pagamento_idformapagamento_seq'::regclass);
+ALTER TABLE ONLY public.especie ALTER COLUMN idespecie SET DEFAULT nextval('public.especie_idespecie_seq'::regclass);
 
 
 --
@@ -602,6 +594,13 @@ ALTER TABLE ONLY public.pedido ALTER COLUMN idpedido SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.produto ALTER COLUMN idproduto SET DEFAULT nextval('public.produtos_idproduto_seq'::regclass);
+
+
+--
+-- Name: raca idraca; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.raca ALTER COLUMN idraca SET DEFAULT nextval('public.raca_idraca_seq'::regclass);
 
 
 --
@@ -625,19 +624,6 @@ COPY public.avaliacao (empresa_id_avaliacao, estrela1, estrelas2, estrelas3, est
 
 
 --
--- Data for Name: cartao_pagamento; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.cartao_pagamento (idcartaopagamento, numero_cartao, cvv, validade, nome_cartao, usuario_id_cartao_pag) FROM stdin;
-1	5466 1036 1183 1205	813	07/22	Sophie G C Ramos	3
-2	4539 6701 9122 7398	255	07/21	Carla Aline Almeida	4
-3	5354 9844 5097 4296	522	09/21	Aurora J M Lima	5
-4	4403 1729 9663 3535	726	08/21	Calebe Pietro Araújo	6
-5	3576 2935 3027 8646	952	05/21	Raimundo T R Lopes	7
-\.
-
-
---
 -- Data for Name: categoria; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -654,12 +640,11 @@ COPY public.categoria (idcategoria, nome_categoria) FROM stdin;
 -- Data for Name: categoria_produto; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.categoria_produto (especie, raca, categoria_id_cat_prod, produto_id_cat_prod) FROM stdin;
-gato	Ragdoll	1	1
-gato	Todos	1	3
-cachorro	Golden Retriever	1	4
-cachorro	Todos	1	5
-cachorro	Pastor-Alemão	1	2
+COPY public.categoria_produto (categoria_id_cat_prod, produto_id_cat_prod, raca_id_cat_prod) FROM stdin;
+1	37	4
+3	36	27
+2	35	27
+1	38	7
 \.
 
 
@@ -668,17 +653,20 @@ cachorro	Pastor-Alemão	1	2
 --
 
 COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil, frete, cidade, bairro, estado) FROM stdin;
-1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	foto_1	grátis	Atibaia	Alvinópolis	SP
-2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	foto_2	grátis	Piracicaba	Paulista	SP
-3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	foto_3	grátis	São Paulo	Jardim Monte Azul	SP
-4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	foto_4	grátis	Campo Limpo Paulista	Vila Constança	SP
-5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	foto_5	5,00	Sorocaba	Vila Gabriel	SP
-6	Petitos	95.833.009/0001-90	contato@petitos.com.br	petitos123	(11) 3923-2401	(11) 98979-3003	Praça Uirapuru	489	05675-030	Casa de Ração	Básico	foto_6	\N	São Paulo	Cidade Jardim	SP
-7	Bigodinho Pets	57.463.932/0001-98	adm@bigodinhopets.com	francalinopets	(11) 4568-1265	(11) 98456-5213	Av. João Batista Medina	79	06803-445	Casa de Ração do Francalino	Intermediário	foto_7	\N	Embu das Artes	Centro	SP
-8	PetLove	65.154.265/0001-25	contato@ptlove.com	petinhoslovitos	(11) 2564-4569	(11) 95684-2356	Rua Sylvio Zanelato	77	06767110		Intermediário	foto_8	\N	Taboão da Serra	Pq.Pinheiros	SP
-9	PetStore	54.985.654/0001-37	adm@petstore.com	petloja	(11) 3256-4587	(11) 96541-2364	Rua Saturno	56	06840-080		Avançado	foto_9	\N	Embu das Artes	Jd. Novo Embu	SP
-21	Pet Life	11.008.984/0001-73	contato@ptlife.com	vidapet	(11) 2632-8164	(11) 98853-9437	Rua Salvador Caruso	927	05054-060		Básico	foto_21	\N	São Paulo	Vila Ipojuca	SP
-23	Vida Pet	98.650.958/0001-22	adm@vidapet.com	petvida	(17) 3570-5543	(17) 99411-9215	Rodovia Armando de Salles Oliveira km 595,501	403	14707-900		Básico	foto_23	\N	Bebedouro	Jardim do Bosque	SP
+40	Bigodinho Pets	69.478.846/0001-38	adm@bigodinho.com	teste		1735705543	Rodovia Armando de Salles Oliveira km 595,501	77	14707-900		Intermediário	\N	\N	Bebedouro	Jardim do Bosque	SP
+41	Bigodinho Pets	69.478.846/0001-38	adm@bigodinho.com	teste		1735705543	Rodovia Armando de Salles Oliveira km 595,501	77	14707-900		Intermediário	\N	\N	Bebedouro	Jardim do Bosque	SP
+1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	foto_1.jpg	grátis	Atibaia	Alvinópolis	SP
+2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	foto_2.jpg	grátis	Piracicaba	Paulista	SP
+3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	foto_3.jpg	grátis	São Paulo	Jardim Monte Azul	SP
+4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	foto_4.jpg	grátis	Campo Limpo Paulista	Vila Constança	SP
+5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	foto_5.jpg	5,00	Sorocaba	Vila Gabriel	SP
+6	Petitos	95.833.009/0001-90	contato@petitos.com.br	petitos123	(11) 3923-2401	(11) 98979-3003	Praça Uirapuru	489	05675-030	Casa de Ração	Básico	foto_6.jpg	\N	São Paulo	Cidade Jardim	SP
+7	Bigodinho Pets	57.463.932/0001-98	adm@bigodinhopets.com	francalinopets	(11) 4568-1265	(11) 98456-5213	Av. João Batista Medina	79	06803-445	Casa de Ração do Francalino	Intermediário	foto_7.jpg	\N	Embu das Artes	Centro	SP
+8	PetLove	65.154.265/0001-25	contato@ptlove.com	petinhoslovitos	(11) 2564-4569	(11) 95684-2356	Rua Sylvio Zanelato	77	06767110		Intermediário	foto_8.jpg	\N	Taboão da Serra	Pq.Pinheiros	SP
+9	PetStore	54.985.654/0001-37	adm@petstore.com	petloja	(11) 3256-4587	(11) 96541-2364	Rua Saturno	56	06840-080		Avançado	foto_9.jpg	\N	Embu das Artes	Jd. Novo Embu	SP
+21	Pet Life	11.008.984/0001-73	contato@ptlife.com	vidapet	(11) 2632-8164	(11) 98853-9437	Rua Salvador Caruso	927	05054-060		Básico	foto_21.jpg	\N	São Paulo	Vila Ipojuca	SP
+23	Vida Pet	98.650.958/0001-22	adm@vidapet.com	petvida	(17) 3570-5543	(17) 99411-9215	Rodovia Armando de Salles Oliveira km 595,501	403	14707-900		Básico	foto_23.jpg	\N	Bebedouro	Jardim do Bosque	SP
+39	Tom Pets	69.478.846/0001-38	tompet@hotmail.com	mozao		(11) 99669-2487	Rua Asdrubal Zanetti	323	07196-210	Casa 5	Básico	empresa_39.jpeg	10,00	Guarulhos	Jardim Bom Clima	SP
 \.
 
 
@@ -696,28 +684,16 @@ COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, us
 
 
 --
--- Data for Name: entregador_empresa; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: especie; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.entregador_empresa (identregadorempresa, cpf_entregador, nome, celular, celular2, empresa_id_entregador) FROM stdin;
-1	471.045.284-90	Heloisa Marina Rayssa Castro	(95) 98730-6310	(95) 3639-9633	1
-2	942.006.114-06	Sebastiana Teresinha Caldeira	(51) 99906-5059	(51) 2713-8864	2
-3	617.772.722-03	Tiago Augusto Souza	(11) 98996-4176	(11) 3689-2561	3
-4	597.552.729-50	Henrique João Oliveira	(27) 98164-1797	(27) 2751-7483	4
-5	606.357.045-44	Carla Cláudia Aparecida Nogueira	(21) 98808-2710	(21) 2878-2294	5
-\.
-
-
---
--- Data for Name: forma_pagamento; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.forma_pagamento (idformapagamento, forma_pagamento, parcelas, valor_parcelas, cod_barra, cartao_pag_id_forma) FROM stdin;
-1	Dinheiro	\N	\N	\N	\N
-2	Cartão de Crédito	3	30.00	\N	1
-3	Cartão de Débito	\N	\N	\N	2
-4	Dinheiro	\N	\N	\N	\N
-5	Cartão de Crédito	2	9.00	\N	3
+COPY public.especie (idespecie, nome_especie) FROM stdin;
+1	Todos
+2	Gato
+3	Cachorro
+4	Pássaro
+5	Peixe
+6	Coelho
 \.
 
 
@@ -726,13 +702,14 @@ COPY public.forma_pagamento (idformapagamento, forma_pagamento, parcelas, valor_
 --
 
 COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM stdin;
-20.00	2	2	1
-30.00	3	3	2
-22.00	3	4	3
-15.00	1	5	4
-18.00	2	6	5
-20.00	1	7	1
-20.00	1	7	1
+2000	2	2	1
+3000	3	3	2
+2200	3	4	3
+1500	1	5	4
+1800	2	6	5
+2000	1	7	1
+2000	1	7	1
+1000	2	8	6
 \.
 
 
@@ -740,13 +717,14 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 -- Data for Name: pedido; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, forma_pagamento_id_pedido, entregador_empresa_id_pedido, endereco_usuario_id_pedido, idusuario_pedidos, status) FROM stdin;
-2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	1	1	4	6_1	1
-3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	2	5	1	3_1	1
-4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	3	3	2	4_1	1
-6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	5	4	3	5_1	1
-7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	1	1	3	3_2	1
-5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	4	2	5	7_1	0
+COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, endereco_usuario_id_pedido, idusuario_pedidos, status, forma_pagamento) FROM stdin;
+2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	4	6_1	1	Dinheiro
+3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	1	3_1	1	Dinheiro
+5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	5	7_1	0	Dinheiro
+4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	2	4_1	1	Crédito
+6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	3	5_1	1	Crédito
+7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	3	3_2	1	Débito
+8	20.00	2020-11-20 11:11:00	2020-11-21 12:00:00	39	7	5	7_2	1	Débito
 \.
 
 
@@ -755,11 +733,55 @@ COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, u
 --
 
 COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida, foto_principal) FROM stdin;
-1	sabor carne	2021-12-21	20.00	disponível	1	Golden	2.00	ração de carne Golden para gatos	kg	Produto_1
-2	sabor frango	2022-05-16	30.00	disponível	5	Premier	5.00	ração de frango Premier para cachorros	kg	Produto_2
-3	sabor salmão	2026-10-19	22.00	disponível	3	Whiskas	1.00	ração de salmão Whiskas para gatos	kg	Produto_3
-4	sabor fígado	2023-07-25	15.00	indisponível	2	Guaby	1.00	ração de fígado Guaby para cachorros	kg	Produto_4
-5	sabor peito de peru	2021-12-15	18.00	indisponível	4	Fórmula Natural	2.00	ração de peito de peru Fórmula Natural para cachorros	kg	Produto_5
+1	sabor carne	2021-12-21	2000	disponível	1	Golden	200	ração de carne Golden para gatos	kg	Produto_1
+2	sabor frango	2022-05-16	3000	disponível	5	Premier	500	ração de frango Premier para cachorros	kg	Produto_2
+3	sabor salmão	2026-10-19	2200	disponível	3	Whiskas	100	ração de salmão Whiskas para gatos	kg	Produto_3
+4	sabor fígado	2023-07-25	1500	indisponível	2	Guaby	100	ração de fígado Guaby para cachorros	kg	Produto_4
+5	sabor peito de peru	2021-12-15	1800	indisponível	4	Fórmula Natural	200	ração de peito de peru Fórmula Natural para cachorros	kg	Produto_5
+37	Ração Carne	2020-12-24	1500	disponível	39	Special Dog	1000	Ração de carne Golden Ragdoll	kg	produto37_39.jpeg
+6	Petisco	\N	1000	disponível	39	\N	700	Petisco petitos	kg	produto15_39.jpeg
+36	Drontal	2021-12-31	5450	indisponível	39	Bayer	33900	O Vermífugo Drontal Gatos é indicado para o tratamento e controle das verminoses intestinais em gatos	mg	produto36_39.jpeg
+35	Bigodinho Pets	2020-12-22	1000	indisponível	39	Golden	1000	Ração de frango Special Dog para Golden	kg	produto35_39.jpeg
+38	Ração Carne	2020-12-15	1000	disponível	39	Special Dog	1000	Ração de carne Special Dog para Pastor	kg	produto38_39.jpeg
+\.
+
+
+--
+-- Data for Name: raca; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.raca (idraca, nome_raca, especie_id_raca) FROM stdin;
+1	Todos	1
+2	Persa	2
+3	Siamês	2
+4	Ragdoll	2
+5	Maine Coon	2
+6	Sphynx	2
+7	Pastor-Alemão	3
+8	Buldogue	3
+9	Poodle	3
+10	Golden Retriever	3
+11	Maltês	3
+12	Arara	4
+13	Calopsita	4
+14	Canário	4
+15	Coleiro	4
+16	Papagaio	4
+17	Trichogaster leeri	5
+18	Platy	5
+19	Paulistinha	5
+20	Tetra Preto	5
+21	Neon Cardina	5
+22	Rex	6
+23	Holland Lop	6
+24	Cabeça de Leão	6
+25	Angorá Inglês	6
+26	Anão Holandês	6
+27	Todos	2
+28	Todos	3
+29	Todos	4
+30	Todos	5
+31	Todos	6
 \.
 
 
@@ -802,7 +824,7 @@ SELECT pg_catalog.setval('public.categoria_idcategoria_seq', 5, true);
 -- Name: empresa_idempresa_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.empresa_idempresa_seq', 38, true);
+SELECT pg_catalog.setval('public.empresa_idempresa_seq', 41, true);
 
 
 --
@@ -813,38 +835,31 @@ SELECT pg_catalog.setval('public.endereco_usuario_idendereco_seq', 5, true);
 
 
 --
--- Name: entregador_empresa_identregadorempresa_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: especie_idespecie_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.entregador_empresa_identregadorempresa_seq', 5, true);
-
-
---
--- Name: forma_pagamento_idformapagamento_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.forma_pagamento_idformapagamento_seq', 5, true);
-
-
---
--- Name: pagamento_idpagamento_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.pagamento_idpagamento_seq', 5, true);
+SELECT pg_catalog.setval('public.especie_idespecie_seq', 6, true);
 
 
 --
 -- Name: pedido_idpedido_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.pedido_idpedido_seq', 7, true);
+SELECT pg_catalog.setval('public.pedido_idpedido_seq', 8, true);
 
 
 --
 -- Name: produtos_idproduto_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.produtos_idproduto_seq', 5, true);
+SELECT pg_catalog.setval('public.produtos_idproduto_seq', 39, true);
+
+
+--
+-- Name: raca_idraca_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.raca_idraca_seq', 31, true);
 
 
 --
@@ -879,27 +894,11 @@ ALTER TABLE ONLY public.endereco_usuario
 
 
 --
--- Name: entregador_empresa entregador_empresa_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: especie especie_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.entregador_empresa
-    ADD CONSTRAINT entregador_empresa_pkey PRIMARY KEY (identregadorempresa);
-
-
---
--- Name: forma_pagamento forma_pagamento_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.forma_pagamento
-    ADD CONSTRAINT forma_pagamento_pkey PRIMARY KEY (idformapagamento);
-
-
---
--- Name: cartao_pagamento pagamento_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.cartao_pagamento
-    ADD CONSTRAINT pagamento_pkey PRIMARY KEY (idcartaopagamento);
+ALTER TABLE ONLY public.especie
+    ADD CONSTRAINT especie_pkey PRIMARY KEY (idespecie);
 
 
 --
@@ -919,19 +918,19 @@ ALTER TABLE ONLY public.produto
 
 
 --
+-- Name: raca raca_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.raca
+    ADD CONSTRAINT raca_pkey PRIMARY KEY (idraca);
+
+
+--
 -- Name: usuario usuario_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.usuario
     ADD CONSTRAINT usuario_pkey PRIMARY KEY (idusuario);
-
-
---
--- Name: forma_pagamento cartao_pag_id_forma; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.forma_pagamento
-    ADD CONSTRAINT cartao_pag_id_forma FOREIGN KEY (cartao_pag_id_forma) REFERENCES public.cartao_pagamento(idcartaopagamento);
 
 
 --
@@ -948,14 +947,6 @@ ALTER TABLE ONLY public.categoria_produto
 
 ALTER TABLE ONLY public.avaliacao
     ADD CONSTRAINT empresa_id_avaliacao FOREIGN KEY (empresa_id_avaliacao) REFERENCES public.empresa(idempresa);
-
-
---
--- Name: entregador_empresa empresa_id_entregador; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.entregador_empresa
-    ADD CONSTRAINT empresa_id_entregador FOREIGN KEY (empresa_id_entregador) REFERENCES public.empresa(idempresa);
 
 
 --
@@ -983,19 +974,11 @@ ALTER TABLE ONLY public.pedido
 
 
 --
--- Name: pedido entregador_empresa_id_pedido; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: raca especie_id_raca; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.pedido
-    ADD CONSTRAINT entregador_empresa_id_pedido FOREIGN KEY (entregador_empresa_id_pedido) REFERENCES public.entregador_empresa(identregadorempresa);
-
-
---
--- Name: pedido forma_pagamento_id_pedido; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.pedido
-    ADD CONSTRAINT forma_pagamento_id_pedido FOREIGN KEY (forma_pagamento_id_pedido) REFERENCES public.forma_pagamento(idformapagamento);
+ALTER TABLE ONLY public.raca
+    ADD CONSTRAINT especie_id_raca FOREIGN KEY (especie_id_raca) REFERENCES public.especie(idespecie);
 
 
 --
@@ -1031,11 +1014,11 @@ ALTER TABLE ONLY public.item_pedido
 
 
 --
--- Name: cartao_pagamento usuario_id_cartao_pag; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: categoria_produto raca_id_cat_prod; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.cartao_pagamento
-    ADD CONSTRAINT usuario_id_cartao_pag FOREIGN KEY (usuario_id_cartao_pag) REFERENCES public.usuario(idusuario);
+ALTER TABLE ONLY public.categoria_produto
+    ADD CONSTRAINT raca_id_cat_prod FOREIGN KEY (raca_id_cat_prod) REFERENCES public.raca(idraca);
 
 
 --
