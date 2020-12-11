@@ -186,7 +186,6 @@ ALTER TABLE public.empresa OWNER TO postgres;
 CREATE TABLE public.produto (
     idproduto integer NOT NULL,
     nome character varying(45) NOT NULL,
-    validade date,
     valor integer NOT NULL,
     status character varying(45) NOT NULL,
     empresa_id_produto integer NOT NULL,
@@ -209,9 +208,17 @@ CREATE VIEW public.cat_prod_empresa AS
     r.nome_raca AS raca,
     es.nome_especie AS especie,
     p.nome AS nome_prod,
+    p.idproduto,
+    p.foto_principal,
+    p.valor,
+    p.marca,
+    p.descricao,
+    p.peso,
+    p.unidade_medida,
     e.idempresa,
     e.nome AS nome_empresa,
-    e.foto_perfil
+    e.foto_perfil,
+    e.frete
    FROM (((((public.categoria c
      JOIN public.categoria_produto cp ON ((cp.categoria_id_cat_prod = c.idcategoria)))
      JOIN public.produto p ON ((p.idproduto = cp.produto_id_cat_prod)))
@@ -279,7 +286,8 @@ CREATE TABLE public.endereco_usuario (
     usuario_id_endereco integer NOT NULL,
     cidade character varying(150) NOT NULL,
     bairro character varying(150) NOT NULL,
-    estado character varying(3) NOT NULL
+    estado character varying(2) NOT NULL,
+    status character(1) NOT NULL
 );
 
 
@@ -364,7 +372,7 @@ ALTER TABLE public.lista_pedido_produto OWNER TO postgres;
 
 CREATE TABLE public.pedido (
     idpedido integer NOT NULL,
-    total numeric(10,2) NOT NULL,
+    total integer NOT NULL,
     data_pedido timestamp without time zone NOT NULL,
     previsao timestamp without time zone,
     empresa_id_pedido integer NOT NULL,
@@ -645,6 +653,16 @@ COPY public.categoria_produto (categoria_id_cat_prod, produto_id_cat_prod, raca_
 3	36	27
 2	35	27
 1	38	7
+2	38	27
+2	42	27
+1	6	2
+1	1	27
+1	4	7
+3	3	28
+2	5	26
+1	2	30
+1	44	14
+2	43	28
 \.
 
 
@@ -653,20 +671,15 @@ COPY public.categoria_produto (categoria_id_cat_prod, produto_id_cat_prod, raca_
 --
 
 COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, endereco, numero, cep, complemento, plano_escolhido, foto_perfil, frete, cidade, bairro, estado) FROM stdin;
-40	Bigodinho Pets	69.478.846/0001-38	adm@bigodinho.com	teste		1735705543	Rodovia Armando de Salles Oliveira km 595,501	77	14707-900		Intermediário	\N	\N	Bebedouro	Jardim do Bosque	SP
-41	Bigodinho Pets	69.478.846/0001-38	adm@bigodinho.com	teste		1735705543	Rodovia Armando de Salles Oliveira km 595,501	77	14707-900		Intermediário	\N	\N	Bebedouro	Jardim do Bosque	SP
-1	Joaquim e Benício Alimentos ME	00.292.228/0001-00	administracao@joaquimoalimentosme.com.br	24yy0Fq4	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	foto_1.jpg	grátis	Atibaia	Alvinópolis	SP
-2	Luís e Igor Mudanças Ltda	03.433.643/0001-17	administracao@igormudancas.com.br	mujQuub0	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	foto_2.jpg	grátis	Piracicaba	Paulista	SP
-3	Danilo e Marli Lavanderia ME	47.130.085/0001-96	ti@danilolavanderiame.com.br	I53il6lb	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	foto_3.jpg	grátis	São Paulo	Jardim Monte Azul	SP
-4	Clara e Pietro Telecomunicações Ltda	48.598.346/0001-60	diretoria@claratelecom.com.br	Fu4plEie	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	foto_4.jpg	grátis	Campo Limpo Paulista	Vila Constança	SP
-5	Bárbara e Cláudio Contábil ME	79.689.345/0001-54	orcamento@barbaracontabil.com.br	9WSzbAtD	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	foto_5.jpg	5,00	Sorocaba	Vila Gabriel	SP
 6	Petitos	95.833.009/0001-90	contato@petitos.com.br	petitos123	(11) 3923-2401	(11) 98979-3003	Praça Uirapuru	489	05675-030	Casa de Ração	Básico	foto_6.jpg	\N	São Paulo	Cidade Jardim	SP
-7	Bigodinho Pets	57.463.932/0001-98	adm@bigodinhopets.com	francalinopets	(11) 4568-1265	(11) 98456-5213	Av. João Batista Medina	79	06803-445	Casa de Ração do Francalino	Intermediário	foto_7.jpg	\N	Embu das Artes	Centro	SP
-8	PetLove	65.154.265/0001-25	contato@ptlove.com	petinhoslovitos	(11) 2564-4569	(11) 95684-2356	Rua Sylvio Zanelato	77	06767110		Intermediário	foto_8.jpg	\N	Taboão da Serra	Pq.Pinheiros	SP
-9	PetStore	54.985.654/0001-37	adm@petstore.com	petloja	(11) 3256-4587	(11) 96541-2364	Rua Saturno	56	06840-080		Avançado	foto_9.jpg	\N	Embu das Artes	Jd. Novo Embu	SP
-21	Pet Life	11.008.984/0001-73	contato@ptlife.com	vidapet	(11) 2632-8164	(11) 98853-9437	Rua Salvador Caruso	927	05054-060		Básico	foto_21.jpg	\N	São Paulo	Vila Ipojuca	SP
-23	Vida Pet	98.650.958/0001-22	adm@vidapet.com	petvida	(17) 3570-5543	(17) 99411-9215	Rodovia Armando de Salles Oliveira km 595,501	403	14707-900		Básico	foto_23.jpg	\N	Bebedouro	Jardim do Bosque	SP
-39	Tom Pets	69.478.846/0001-38	tompet@hotmail.com	mozao		(11) 99669-2487	Rua Asdrubal Zanetti	323	07196-210	Casa 5	Básico	empresa_39.jpeg	10,00	Guarulhos	Jardim Bom Clima	SP
+39	Tom Pets	69.478.846/0001-38	tompet@hotmail.com	mozao		(11) 99669-2487	Rua Asdrubal Zanetti	232	07196-210	Casa 5	Básico	empresa_39.jpeg	10,00	Guarulhos	Jardim Bom Clima	SP
+42	Ragtom	21.458.745/0001-28	ragtom@outlook.com	ragtom	(11)  5657-4236	(11) 9 4587-4569	Rua José Germano	853	12285-460	Casa 2	Avançado	\N	\N	Caçapava	Residencial Esperança	SP
+44	Tom 21	54.869.541/0001-22	21tom@gmail.com	tom21	(11)  2564-7996	(11) 9 5478-5632	Rua José Germano	358	12285-460	Casa 2	Básico	empresa_44.jpeg	10,00	Caçapava	Residencial Esperança	SP
+1	M & T	00.292.228/0001-00	casaracao@mt.com.br	m&t	(11) 3528-5046	(11) 98563-4967	Rua Padre Feliciano Grande	576	12942-460	Empresa de alimentos	Básico	foto_1.jpg	grátis	Atibaia	Alvinópolis	SP
+2	Golden	03.433.643/0001-17	administracao@golden.com.br	golden	(19) 3672-5672	(19) 99852-1896	Rua Antonio Gil de Oliveira	773	13401-135	Empresa de mudança	Intermediário	foto_2.jpg	grátis	Piracicaba	Paulista	SP
+3	Rações TOP	47.130.085/0001-96	top@topracao.com.br	top	(11) 2567-9910	(11) 99671-9717	Rua Joaquim Dias	356	05836-270	Empresa de lavanderia	Avançado	foto_3.jpg	0	São Paulo	Jardim Monte Azul	SP
+4	Pedigree	48.598.346/0001-60	pedigree@pedigree.com.br	pedigree	(11) 2954-1573	(11) 99220-1045	Rua Panorama	456	13238-531	Empresa de telecomunicações	Básico	foto_4.jpg	grátis	Campo Limpo Paulista	Vila Constança	SP
+5	Foster	79.689.345/0001-54	foster@foster.com.br	foster	(15) 2959-9479	(15) 99585-3897	Rua Gonçalves Dias	504	18081-040	Empresa de contabilidade	Básico	foto_5.jpg	5,00	Sorocaba	Vila Gabriel	SP
 \.
 
 
@@ -674,12 +687,12 @@ COPY public.empresa (idempresa, nome, cnpj, email, senha, telefone, celular, end
 -- Data for Name: endereco_usuario; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, usuario_id_endereco, cidade, bairro, estado) FROM stdin;
-1	Rua Monte Denali	367	69092-425	Rua sem saída	3	Manaus	Nova Cidade	AM
-2	Rua José Estevam Souza	817	56310-240	Casa 5	4	Petrolina	COHAB Massangano	PE
-3	Quadra SQ 19 Quadra 12	168	72880-714	Loja de roupa	5	Cidade Ocidental	Centro	GO
-4	Rua Pequi	315	79115-160	Casa 3	6	Campo Grande	Coophatrabalho	MS
-5	Travessa B	435	49096-277	Rua sem saída	7	Aracaju	Jabotiana	SE
+COPY public.endereco_usuario (idendereco, endereco, numero, cep, complemento, usuario_id_endereco, cidade, bairro, estado, status) FROM stdin;
+1	Rua Monte Denali	367	69092-425	Rua sem saída	3	Manaus	Nova Cidade	AM	1
+2	Rua José Estevam Souza	817	56310-240	Casa 5	4	Petrolina	COHAB Massangano	PE	1
+3	Quadra SQ 19 Quadra 12	168	72880-714	Loja de roupa	5	Cidade Ocidental	Centro	GO	1
+4	Rua Pequi	315	79115-160	Casa 3	6	Campo Grande	Coophatrabalho	MS	1
+5	Travessa B	435	49096-277	Rua sem saída	7	Aracaju	Jabotiana	SE	1
 \.
 
 
@@ -718,13 +731,13 @@ COPY public.item_pedido (valor_item, qtd, pedido_id_item, produto_id_item) FROM 
 --
 
 COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, usuario_id_pedido, endereco_usuario_id_pedido, idusuario_pedidos, status, forma_pagamento) FROM stdin;
-2	40.00	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	4	6_1	1	Dinheiro
-3	95.00	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	1	3_1	1	Dinheiro
-5	15.00	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	5	7_1	0	Dinheiro
-4	66.00	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	2	4_1	1	Crédito
-6	18.00	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	3	5_1	1	Crédito
-7	40.00	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	3	3_2	1	Débito
-8	20.00	2020-11-20 11:11:00	2020-11-21 12:00:00	39	7	5	7_2	1	Débito
+2	40	2020-09-25 00:00:00	2020-09-25 00:00:00	1	6	4	6_1	1	Dinheiro
+3	95	2020-10-26 00:00:00	2020-10-26 00:00:00	5	3	1	3_1	1	Dinheiro
+5	15	2020-09-25 00:00:00	2020-09-26 00:00:00	2	7	5	7_1	0	Dinheiro
+4	66	2020-10-09 00:00:00	2020-10-10 00:00:00	3	4	2	4_1	1	Crédito
+6	18	2020-10-01 00:00:00	2020-10-01 00:00:00	4	5	3	5_1	1	Crédito
+7	40	2020-11-13 17:59:54	2020-11-13 18:59:00	1	3	3	3_2	1	Débito
+8	20	2020-11-20 11:11:00	2020-11-21 12:00:00	39	7	5	7_2	0	Débito
 \.
 
 
@@ -732,17 +745,20 @@ COPY public.pedido (idpedido, total, data_pedido, previsao, empresa_id_pedido, u
 -- Data for Name: produto; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.produto (idproduto, nome, validade, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida, foto_principal) FROM stdin;
-1	sabor carne	2021-12-21	2000	disponível	1	Golden	200	ração de carne Golden para gatos	kg	Produto_1
-2	sabor frango	2022-05-16	3000	disponível	5	Premier	500	ração de frango Premier para cachorros	kg	Produto_2
-3	sabor salmão	2026-10-19	2200	disponível	3	Whiskas	100	ração de salmão Whiskas para gatos	kg	Produto_3
-4	sabor fígado	2023-07-25	1500	indisponível	2	Guaby	100	ração de fígado Guaby para cachorros	kg	Produto_4
-5	sabor peito de peru	2021-12-15	1800	indisponível	4	Fórmula Natural	200	ração de peito de peru Fórmula Natural para cachorros	kg	Produto_5
-37	Ração Carne	2020-12-24	1500	disponível	39	Special Dog	1000	Ração de carne Golden Ragdoll	kg	produto37_39.jpeg
-6	Petisco	\N	1000	disponível	39	\N	700	Petisco petitos	kg	produto15_39.jpeg
-36	Drontal	2021-12-31	5450	indisponível	39	Bayer	33900	O Vermífugo Drontal Gatos é indicado para o tratamento e controle das verminoses intestinais em gatos	mg	produto36_39.jpeg
-35	Bigodinho Pets	2020-12-22	1000	indisponível	39	Golden	1000	Ração de frango Special Dog para Golden	kg	produto35_39.jpeg
-38	Ração Carne	2020-12-15	1000	disponível	39	Special Dog	1000	Ração de carne Special Dog para Pastor	kg	produto38_39.jpeg
+COPY public.produto (idproduto, nome, valor, status, empresa_id_produto, marca, peso, descricao, unidade_medida, foto_principal) FROM stdin;
+2	Ração para peixe	3000	disponível	5	NutraFish	15000	- Contém proteínas e vitaminas;\n- Auxilia o desenvolvimento;\n- Realça a cor.	g	Produto_2.jpeg
+44	Ração para pássaro	2000	disponível	6	NutriBird	2000	 Formulado com ingredientes de alta qualidade e digestibilidade, enriquecido com vitaminas e minerais, proporcionando uma vida saudavel às aves	g	produto44_6.jpeg
+37	Ração Carne	1500	disponível	39	Special Dog	1000	Ração de carne Golden Ragdoll	kg	produto37_39.jpeg
+43	Fantasia Hot Dog	10000	disponível	44	Special Dog	10000	Roupinha de hot dog para cachorros	g	produto43_44.jpeg
+6	Petisco	1000	disponível	39	\N	700	Petisco petitos	kg	produto15_39.jpeg
+36	Drontal	5450	indisponível	39	Bayer	33900	O Vermífugo Drontal Gatos é indicado para o tratamento e controle das verminoses intestinais em gatos	mg	produto36_39.jpeg
+35	Bigodinho Pets	1000	indisponível	39	Golden	1000	Ração de frango Special Dog para Golden	kg	produto35_39.jpeg
+38	Ração Carne	1000	disponível	39	Special Dog	1000	Ração de carne Special Dog para Pastor	kg	produto38_39.webp
+42	Fantasia Dinossauro	10000	disponível	42	Special Cat	3000	Roupinha de dinossauro para gatos	g	produto42_42.webp
+1	sabor carne	2000	disponível	1	Golden	300	ração de carne Golden para gatos	kg	Produto_1.jpeg
+4	sabor cordeiro e aveia	5000	indisponível	2	Guaby Natural	1500	ração de cordeiro e aveia Guaby para Pastor-Alemão	kg	Produto_4.webp
+3	Antipulgas Zoetis	7000	disponível	3	Simparic	4000	para Cães 10,1 a 20 Kg utilizado para o tratamento das infestações por pulgas e sarna sarcótica. Após a administração do Simparic, a sua atividade contra pulgas dura, pelo menos, 5 semanas	mg	Produto_3.jpeg
+5	Bandana Para Coelho	1800	disponível	4	Coelhinhos	1000	Acessórios para coelhos feito exclusivamente para eles.\nServe em anão.	g	Produto_5.webp
 \.
 
 
@@ -797,6 +813,14 @@ Em Separação	separando o produto pedido	2020-10-26 00:00:00	3
 Em Separação	separando o produto pedido	2020-10-01 00:00:00	6
 Em Separação	separando o produto pedido	2020-11-13 00:00:00	7
 Entregue	pedido foi entregue ao cliente	2020-09-25 00:00:00	5
+Pedido Aceito	\N	2020-12-09 12:06:00	8
+Em Separação	\N	2020-12-09 12:06:00	8
+Saiu para entrega	\N	2020-12-09 12:06:00	8
+Entregue	\N	2020-12-09 12:11:00	8
+Pedido Aceito	\N	2020-12-11 10:51:00	2
+Pedido Aceito	\N	2020-12-11 11:01:00	4
+Pedido Aceito	\N	2020-12-11 11:18:00	6
+Pedido Aceito	\N	2020-12-11 11:23:00	3
 \.
 
 
@@ -808,8 +832,8 @@ COPY public.usuario (idusuario, cpf, senha, email, nascimento, nome, celular2, c
 3	089.703.487-27	d21Ym3tGse	sophiegiovannaclariceramos@gamil.com	1974-02-19	Sophie Giovanna Clarice Ramos	(92) 3585-1880	(92) 98531-9989
 4	837.147.127-04	0JbmS4YaLJ	carlaalinealmeida@live.jp	1987-05-01	Carla Aline Almeida	(87) 3892-2532	(87) 98716-9531
 5	166.226.857-20	cTGGlWsc7d	aaurorajuliamilenalima@numero.com.br	1999-09-05	Aurora Julia Milena Lima	(61) 2852-8566	(61) 99892-8514
-6	347.532.777-55	wKneu6uerd	calebepietroaraujo-92@agacapital.com.br	1984-08-16	Calebe Pietro Araújo	(67) 3510-2967	(67) 99599-4081
 7	460.465.446-88	gIBhioE9Gu	raimundotomasricardolopes@me.com	2001-09-06	Raimundo Tomás Ricardo Lopes	(79) 2789-9452	(79) 99400-4973
+6	347.532.777-55	123	jonathankitagawa@hotmail.com.br	1984-08-16	Calebe Pietro Araújo	(67) 3510-2967	(67) 99599-4081
 \.
 
 
@@ -824,7 +848,7 @@ SELECT pg_catalog.setval('public.categoria_idcategoria_seq', 5, true);
 -- Name: empresa_idempresa_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.empresa_idempresa_seq', 41, true);
+SELECT pg_catalog.setval('public.empresa_idempresa_seq', 44, true);
 
 
 --
@@ -852,7 +876,7 @@ SELECT pg_catalog.setval('public.pedido_idpedido_seq', 8, true);
 -- Name: produtos_idproduto_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.produtos_idproduto_seq', 39, true);
+SELECT pg_catalog.setval('public.produtos_idproduto_seq', 44, true);
 
 
 --
